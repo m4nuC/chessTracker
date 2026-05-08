@@ -50,13 +50,24 @@ export type Reward = {
   description: string;
   icon: string;
   requiredPoints: number;
-  status: "locked" | "unlocked" | "claimed";
+  intervalPoints: number | null;
+  timesUnlocked: number;
+  timesActivated: number;
+  timesClaimed: number;
+  timesAvailable: number;
+  timesPending: number;
+  nextUnlockAt: number | null;
 };
 
 export type Badge = {
+  id: number;
   name: string;
   description: string;
   earned: boolean;
+  icon: string;
+  xp: number;
+  conditionType: string;
+  conditionValue: number;
 };
 
 export type AppState = {
@@ -65,6 +76,7 @@ export type AppState = {
   totalPoints: number;
   workPoints: number;
   bonusPoints: number;
+  badgePoints: number;
   level: number;
   nextLevelAt: number;
   streak: number;
@@ -134,6 +146,20 @@ function createDb() {
       icon TEXT NOT NULL DEFAULT 'trophy',
       required_points INTEGER NOT NULL CHECK (required_points >= 0),
       status TEXT NOT NULL DEFAULT 'locked' CHECK (status IN ('locked', 'unlocked', 'claimed')),
+      interval_points INTEGER,
+      times_activated INTEGER NOT NULL DEFAULT 0,
+      times_claimed INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS badges (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      icon TEXT NOT NULL DEFAULT '🏆',
+      xp INTEGER NOT NULL CHECK (xp >= 0),
+      condition_type TEXT NOT NULL,
+      condition_value INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -144,7 +170,156 @@ function createDb() {
       ON daily_entries(task_type_id, entry_date);
   `);
 
+  migrateRewardsTable(db);
+  seedDefaults(db);
+  migrateRewards(db);
+
   return db;
+}
+
+type RewardSeed = {
+  name: string;
+  description: string;
+  icon: string;
+  requiredPoints: number;
+  intervalPoints: number | null;
+};
+
+const REWARD_DEFINITIONS: RewardSeed[] = [
+  { name: "Choix du dessert", description: "Choisis le dessert ce soir.", icon: "🍨", requiredPoints: 100, intervalPoints: null },
+  { name: "Goûter spécial", description: "Un goûter de ton choix.", icon: "🍪", requiredPoints: 150, intervalPoints: 670 },
+  { name: "Bon 30 min console", description: "30 minutes de jeu console.", icon: "🎮", requiredPoints: 250, intervalPoints: 750 },
+  { name: "Choix du film du soir", description: "Tu choisis le film qu'on regarde.", icon: "🎬", requiredPoints: 450, intervalPoints: 1500 },
+  { name: "Sortie glace", description: "Une sortie pour aller manger une glace.", icon: "🍦", requiredPoints: 700, intervalPoints: 2500 },
+  { name: "Plus 15 min avant dodo", description: "15 minutes de plus avant le coucher.", icon: "🌙", requiredPoints: 1200, intervalPoints: null },
+  { name: "Tu choisis le repas du soir", description: "Tu décides du menu de ce soir.", icon: "🍽️", requiredPoints: 1400, intervalPoints: 3500 },
+  { name: "Petit jouet surprise", description: "Un petit jouet à choisir ensemble.", icon: "🎁", requiredPoints: 1900, intervalPoints: null },
+  { name: "Choix du goûter d'école", description: "Tu choisis ton goûter pour l'école.", icon: "🥐", requiredPoints: 2350, intervalPoints: null },
+  { name: "Skin Epic Overwatch", description: "Un skin Epic Overwatch au choix.", icon: "🎨", requiredPoints: 2500, intervalPoints: 3000 },
+  { name: "Une heure d'écran", description: "Une heure d'écran (TV ou tablette).", icon: "📺", requiredPoints: 2680, intervalPoints: null },
+  { name: "Bain moussant", description: "Un bain avec mousse et bulles.", icon: "🛁", requiredPoints: 3050, intervalPoints: null },
+  { name: "1 roman de ton choix", description: "Un roman que tu choisis.", icon: "📖", requiredPoints: 3300, intervalPoints: 4000 },
+  { name: "Petite figurine", description: "Une petite figurine ou jouet à choisir.", icon: "🦄", requiredPoints: 3700, intervalPoints: null },
+  { name: "Bon 1 h console", description: "1 heure de jeu console.", icon: "🎮", requiredPoints: 4000, intervalPoints: 2500 },
+  { name: "Maquillage et vernis", description: "Séance maquillage ou pose de vernis.", icon: "✨", requiredPoints: 4350, intervalPoints: null },
+  { name: "Skin Légendaire Overwatch", description: "Un skin Légendaire Overwatch au choix.", icon: "👑", requiredPoints: 4500, intervalPoints: 5000 },
+  { name: "Atelier cuisine", description: "Préparer un gâteau ensemble.", icon: "🧁", requiredPoints: 5250, intervalPoints: null },
+  { name: "Sortie spéciale", description: "Musée, ciné, escape game ou similaire.", icon: "🎟️", requiredPoints: 5500, intervalPoints: 6000 },
+  { name: "Dessert spécial", description: "Un dessert spécial choisi par toi.", icon: "🍰", requiredPoints: 5950, intervalPoints: null },
+  { name: "Soirée ciné maison", description: "Film à la maison avec popcorn.", icon: "🎥", requiredPoints: 6700, intervalPoints: null },
+  { name: "Bowling ou trampoline park", description: "Une sortie sportive et fun.", icon: "🎳", requiredPoints: 7000, intervalPoints: null },
+  { name: "Skin Mythique Overwatch", description: "Un skin Mythique Overwatch au choix.", icon: "💎", requiredPoints: 8000, intervalPoints: 9000 },
+  { name: "Petite BD", description: "Une petite BD à choisir.", icon: "📚", requiredPoints: 8700, intervalPoints: null },
+  { name: "Beau jeu d'échecs", description: "Un beau jeu d'échecs rien qu'à toi.", icon: "♟️", requiredPoints: 9000, intervalPoints: null },
+  { name: "Sortie balade", description: "Balade vélo ou au parc.", icon: "🚲", requiredPoints: 9750, intervalPoints: null },
+  { name: "Boîte de Lego", description: "Une petite boîte de Lego.", icon: "🧱", requiredPoints: 10450, intervalPoints: null },
+  { name: "Sortie papeterie", description: "Choisir des fournitures à la papeterie.", icon: "📒", requiredPoints: 11150, intervalPoints: null },
+  { name: "Sortie surprise", description: "Un endroit que tu adores.", icon: "🎡", requiredPoints: 11700, intervalPoints: null },
+  { name: "Grande sortie", description: "Zoo, aquarium ou parc d'attractions.", icon: "🦋", requiredPoints: 12000, intervalPoints: null }
+];
+
+function migrateRewards(db: Database.Database) {
+  const checkStmt = db.prepare("SELECT 1 FROM rewards WHERE name = ?");
+  const insertStmt = db.prepare(
+    `INSERT INTO rewards (name, description, icon, required_points, interval_points) VALUES (?, ?, ?, ?, ?)`
+  );
+
+  db.transaction(() => {
+    for (const r of REWARD_DEFINITIONS) {
+      if (!checkStmt.get(r.name)) {
+        insertStmt.run(r.name, r.description, r.icon, r.requiredPoints, r.intervalPoints);
+      }
+    }
+  })();
+}
+
+function migrateRewardsTable(db: Database.Database) {
+  const cols = db.prepare("PRAGMA table_info(rewards)").all() as { name: string }[];
+  const colNames = new Set(cols.map((c) => c.name));
+
+  if (!colNames.has("interval_points")) {
+    db.exec("ALTER TABLE rewards ADD COLUMN interval_points INTEGER");
+  }
+  if (!colNames.has("times_activated")) {
+    db.exec("ALTER TABLE rewards ADD COLUMN times_activated INTEGER NOT NULL DEFAULT 0");
+  }
+  if (!colNames.has("times_claimed")) {
+    db.exec("ALTER TABLE rewards ADD COLUMN times_claimed INTEGER NOT NULL DEFAULT 0");
+    db.exec(
+      "UPDATE rewards SET times_activated = 1, times_claimed = 1 WHERE status = 'claimed'"
+    );
+  }
+}
+
+function seedDefaults(db: Database.Database) {
+  const badgesCount = db.prepare("SELECT COUNT(*) as count FROM badges").get() as { count: number };
+  if (badgesCount.count === 0) {
+    const stmt = db.prepare(
+      `INSERT INTO badges (name, description, icon, xp, condition_type, condition_value) VALUES (?, ?, ?, ?, ?, ?)`
+    );
+    db.transaction(() => {
+      stmt.run("Premier coup", "Terminer 10 activités d'échecs.", "🎯", 15, "total_units", 10);
+      stmt.run("Premiers puzzles", "Résoudre 25 puzzles.", "🧩", 12, "puzzle_units", 25);
+      stmt.run("Premier match", "Jouer ta première partie contre un bot.", "⚔️", 25, "bot_units", 1);
+      stmt.run("Trois jours d'affilée", "Trois jours d'échecs de suite.", "🔁", 30, "streak", 3);
+      stmt.run("Objectif décroché", "Atteindre un objectif hebdomadaire.", "🏆", 30, "weekly_goals", 1);
+      stmt.run("Une semaine sérieuse", "Sept jours d'échecs de suite.", "📅", 75, "streak", 7);
+      stmt.run("100 puzzles", "Résoudre 100 puzzles au total.", "🧩", 54, "puzzle_units", 100);
+      stmt.run("10 bots vaincus", "Jouer 10 parties contre les bots.", "🤖", 42, "bot_units", 10);
+      stmt.run("300 puzzles", "Résoudre 300 puzzles au total.", "💪", 100, "puzzle_units", 300);
+      stmt.run("Triple champ", "Atteindre 3 objectifs hebdomadaires au total.", "🏅", 100, "weekly_goals", 3);
+      stmt.run("Mois complet", "Trente jours d'échecs de suite.", "📆", 120, "streak", 30);
+      stmt.run("600 puzzles", "Résoudre 600 puzzles au total.", "🧠", 110, "puzzle_units", 600);
+      stmt.run("25 bots vaincus", "Jouer 25 parties contre les bots.", "🤖", 120, "bot_units", 25);
+      stmt.run("1000 puzzles", "Résoudre 1000 puzzles au total.", "👑", 200, "puzzle_units", 1000);
+      stmt.run("Cap des 1000 unités", "Mille activités d'échecs au total.", "🌟", 300, "total_units", 1000);
+      stmt.run("Combo de 14 jours", "Quatorze jours d'échecs de suite.", "🔥", 60, "streak", 14);
+      stmt.run("Marathon", "Soixante jours d'échecs de suite.", "🏃", 250, "streak", 60);
+      stmt.run("50 bots vaincus", "Jouer 50 parties contre les bots.", "🤖", 200, "bot_units", 50);
+      stmt.run("5 objectifs hebdo", "Atteindre 5 objectifs hebdomadaires au total.", "⭐", 45, "weekly_goals", 5);
+      stmt.run("500 activités", "Cinq cents activités d'échecs au total.", "🚀", 200, "total_units", 500);
+    })();
+  }
+
+  const tasksCount = db.prepare("SELECT COUNT(*) as count FROM task_types").get() as { count: number };
+  if (tasksCount.count === 0) {
+    const stmt = db.prepare(
+      `INSERT INTO task_types (name, icon, points_per_unit, unit_label) VALUES (?, ?, ?, ?)`
+    );
+    db.transaction(() => {
+      stmt.run("Puzzles", "🧩", 1.5, "puzzle");
+      stmt.run("Parties bot", "🤖", 8, "partie");
+      stmt.run("Parties elo", "⚔️", 11, "partie");
+    })();
+  }
+
+  const goalsCount = db.prepare("SELECT COUNT(*) as count FROM weekly_goals").get() as { count: number };
+  if (goalsCount.count === 0) {
+    const weekStart = computeCurrentWeekStartIso();
+    const tasks = db
+      .prepare("SELECT id, name FROM task_types")
+      .all() as { id: number; name: string }[];
+    const stmt = db.prepare(
+      `INSERT INTO weekly_goals (task_type_id, target_quantity, bonus_points, week_start) VALUES (?, ?, ?, ?)`
+    );
+    db.transaction(() => {
+      for (const task of tasks) {
+        const lower = task.name.toLowerCase();
+        if (lower.includes("puzzle")) stmt.run(task.id, 40, 25, weekStart);
+        else if (lower.includes("bot")) stmt.run(task.id, 3, 25, weekStart);
+        else if (lower.includes("elo")) stmt.run(task.id, 3, 30, weekStart);
+      }
+    })();
+  }
+
+}
+
+function computeCurrentWeekStartIso() {
+  const date = new Date();
+  const day = date.getDay();
+  const daysFromMonday = day === 0 ? 6 : day - 1;
+  date.setDate(date.getDate() - daysFromMonday);
+  return formatLocalDate(date);
 }
 
 function getDb() {
@@ -216,6 +391,26 @@ export function getSession(token?: string) {
     .get(token, nowIso()) as Session | undefined;
 
   return session ?? null;
+}
+
+export function resetDatabase() {
+  const db = getDb();
+
+  db.transaction(() => {
+    db.exec(`
+      DELETE FROM goal_bonuses;
+      DELETE FROM daily_entries;
+      DELETE FROM weekly_goals;
+      DELETE FROM rewards;
+      DELETE FROM badges;
+      DELETE FROM task_types;
+    `);
+    db.exec(`
+      DELETE FROM sqlite_sequence
+      WHERE name IN ('goal_bonuses','daily_entries','weekly_goals','rewards','badges','task_types');
+    `);
+    seedDefaults(db);
+  })();
 }
 
 export function deleteSession(token?: string) {
@@ -299,24 +494,114 @@ export function createReward(input: {
   description: string;
   icon: string;
   requiredPoints: number;
+  intervalPoints: number | null;
 }) {
   getDb()
     .prepare(
-      `INSERT INTO rewards (name, description, icon, required_points)
-       VALUES (?, ?, ?, ?)`
+      `INSERT INTO rewards (name, description, icon, required_points, interval_points)
+       VALUES (?, ?, ?, ?, ?)`
     )
-    .run(input.name, input.description, input.icon, input.requiredPoints);
-  unlockEligibleRewards();
+    .run(input.name, input.description, input.icon, input.requiredPoints, input.intervalPoints);
 }
 
-export function claimReward(id: number) {
+export function updateReward(input: {
+  id: number;
+  name: string;
+  description: string;
+  icon: string;
+  requiredPoints: number;
+  intervalPoints: number | null;
+}) {
   getDb()
-    .prepare("UPDATE rewards SET status = 'claimed' WHERE id = ? AND status = 'unlocked'")
-    .run(id);
+    .prepare(
+      `UPDATE rewards
+       SET name = ?, description = ?, icon = ?, required_points = ?, interval_points = ?
+       WHERE id = ?`
+    )
+    .run(
+      input.name,
+      input.description,
+      input.icon,
+      input.requiredPoints,
+      input.intervalPoints,
+      input.id
+    );
+}
+
+export function activateReward(id: number) {
+  const db = getDb();
+  const totalPoints = getTotalPoints();
+  const reward = db
+    .prepare(
+      `SELECT required_points as requiredPoints, interval_points as intervalPoints,
+              times_activated as timesActivated
+       FROM rewards WHERE id = ?`
+    )
+    .get(id) as
+    | { requiredPoints: number; intervalPoints: number | null; timesActivated: number }
+    | undefined;
+
+  if (!reward) return;
+
+  const timesUnlocked = computeTimesUnlocked(
+    totalPoints,
+    reward.requiredPoints,
+    reward.intervalPoints
+  );
+
+  if (reward.timesActivated < timesUnlocked) {
+    db.prepare("UPDATE rewards SET times_activated = times_activated + 1 WHERE id = ?").run(id);
+  }
+}
+
+export function validateRewardClaim(id: number) {
+  const db = getDb();
+  const reward = db
+    .prepare(
+      `SELECT times_activated as timesActivated, times_claimed as timesClaimed
+       FROM rewards WHERE id = ?`
+    )
+    .get(id) as { timesActivated: number; timesClaimed: number } | undefined;
+
+  if (!reward) return;
+
+  if (reward.timesClaimed < reward.timesActivated) {
+    db.prepare("UPDATE rewards SET times_claimed = times_claimed + 1 WHERE id = ?").run(id);
+  }
 }
 
 export function deleteReward(id: number) {
   getDb().prepare("DELETE FROM rewards WHERE id = ?").run(id);
+}
+
+function computeTimesUnlocked(
+  totalPoints: number,
+  requiredPoints: number,
+  intervalPoints: number | null
+) {
+  if (totalPoints < requiredPoints) return 0;
+  if (intervalPoints == null || intervalPoints <= 0) return 1;
+  return Math.floor((totalPoints - requiredPoints) / intervalPoints) + 1;
+}
+
+export function createBadge(input: {
+  name: string;
+  description: string;
+  icon: string;
+  xp: number;
+  conditionType: string;
+  conditionValue: number;
+}) {
+  getDb()
+    .prepare(
+      `INSERT INTO badges (name, description, icon, xp, condition_type, condition_value)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    )
+    .run(input.name, input.description, input.icon, input.xp, input.conditionType, input.conditionValue);
+}
+
+export function deleteBadge(id: number) {
+  getDb().prepare("DELETE FROM badges WHERE id = ?").run(id);
 }
 
 export function addDailyEntry(taskTypeId: number, quantity = 1) {
@@ -337,8 +622,98 @@ export function addDailyEntry(taskTypeId: number, quantity = 1) {
     ).run(taskTypeId, formatLocalDate(), quantity);
 
     awardReachedWeeklyBonuses();
-    unlockEligibleRewards();
   })();
+}
+
+export function removeLastDailyEntry(taskTypeId: number) {
+  const db = getDb();
+
+  db.transaction(() => {
+    db.prepare(
+      `DELETE FROM daily_entries
+       WHERE id = (
+         SELECT id
+         FROM daily_entries
+         WHERE task_type_id = ? AND entry_date = ?
+         ORDER BY id DESC
+         LIMIT 1
+       )`
+    ).run(taskTypeId, formatLocalDate());
+
+    revokeGoalBonusesBelowTarget();
+    clampRewardCountersToUnlocks();
+  })();
+}
+
+function revokeGoalBonusesBelowTarget() {
+  const db = getDb();
+  const bonuses = db
+    .prepare(
+      `SELECT
+        gb.id as bonusId,
+        wg.task_type_id as taskTypeId,
+        wg.target_quantity as targetQuantity,
+        wg.week_start as weekStart
+       FROM goal_bonuses gb
+       JOIN weekly_goals wg ON wg.id = gb.weekly_goal_id`
+    )
+    .all() as {
+      bonusId: number;
+      taskTypeId: number;
+      targetQuantity: number;
+      weekStart: string;
+    }[];
+
+  for (const b of bonuses) {
+    const row = db
+      .prepare(
+        `SELECT COALESCE(SUM(quantity), 0) as quantity
+         FROM daily_entries
+         WHERE task_type_id = ?
+          AND entry_date BETWEEN ? AND ?`
+      )
+      .get(b.taskTypeId, b.weekStart, addDays(b.weekStart, 6)) as {
+        quantity: number;
+      };
+
+    if (row.quantity < b.targetQuantity) {
+      db.prepare("DELETE FROM goal_bonuses WHERE id = ?").run(b.bonusId);
+    }
+  }
+}
+
+function clampRewardCountersToUnlocks() {
+  const db = getDb();
+  const totalPoints = getTotalPoints();
+  const rewards = db
+    .prepare(
+      `SELECT id, required_points as requiredPoints, interval_points as intervalPoints,
+              times_activated as timesActivated, times_claimed as timesClaimed
+       FROM rewards`
+    )
+    .all() as {
+      id: number;
+      requiredPoints: number;
+      intervalPoints: number | null;
+      timesActivated: number;
+      timesClaimed: number;
+    }[];
+
+  for (const r of rewards) {
+    const timesUnlocked = computeTimesUnlocked(
+      totalPoints,
+      r.requiredPoints,
+      r.intervalPoints
+    );
+    const newActivated = Math.min(r.timesActivated, timesUnlocked);
+    const newClaimed = Math.min(r.timesClaimed, newActivated);
+
+    if (newActivated !== r.timesActivated || newClaimed !== r.timesClaimed) {
+      db.prepare(
+        "UPDATE rewards SET times_activated = ?, times_claimed = ? WHERE id = ?"
+      ).run(newActivated, newClaimed, r.id);
+    }
+  }
 }
 
 function getWorkPoints() {
@@ -366,7 +741,11 @@ function getBonusPoints() {
 }
 
 function getTotalPoints() {
-  return getWorkPoints() + getBonusPoints();
+  const today = formatLocalDate();
+  const streak = getStreak(today);
+  const badges = getBadges(streak);
+  const badgePoints = badges.filter(b => b.earned).reduce((sum, b) => sum + b.xp, 0);
+  return getWorkPoints() + getBonusPoints() + badgePoints;
 }
 
 function awardReachedWeeklyBonuses() {
@@ -411,17 +790,6 @@ function awardReachedWeeklyBonuses() {
   }
 }
 
-function unlockEligibleRewards() {
-  const totalPoints = getTotalPoints();
-
-  getDb()
-    .prepare(
-      `UPDATE rewards
-       SET status = 'unlocked'
-       WHERE status = 'locked' AND required_points <= ?`
-    )
-    .run(totalPoints);
-}
 
 function getTaskTypes() {
   return getDb()
@@ -503,8 +871,8 @@ function getWeeklyGoals(weekStart: string) {
     }));
 }
 
-function getRewards() {
-  return getDb()
+function getRewards(totalPoints: number): Reward[] {
+  const rows = getDb()
     .prepare(
       `SELECT
         id,
@@ -512,11 +880,49 @@ function getRewards() {
         description,
         icon,
         required_points as requiredPoints,
-        status
+        interval_points as intervalPoints,
+        times_activated as timesActivated,
+        times_claimed as timesClaimed
        FROM rewards
        ORDER BY required_points ASC, id ASC`
     )
-    .all() as Reward[];
+    .all() as {
+    id: number;
+    name: string;
+    description: string;
+    icon: string;
+    requiredPoints: number;
+    intervalPoints: number | null;
+    timesActivated: number;
+    timesClaimed: number;
+  }[];
+
+  return rows.map((r) => {
+    const timesUnlocked = computeTimesUnlocked(totalPoints, r.requiredPoints, r.intervalPoints);
+    const timesAvailable = Math.max(0, timesUnlocked - r.timesActivated);
+    const timesPending = Math.max(0, r.timesActivated - r.timesClaimed);
+    let nextUnlockAt: number | null;
+    if (r.intervalPoints == null) {
+      nextUnlockAt = timesUnlocked === 0 ? r.requiredPoints : null;
+    } else {
+      nextUnlockAt = r.requiredPoints + r.intervalPoints * timesUnlocked;
+    }
+
+    return {
+      id: r.id,
+      name: r.name,
+      description: r.description,
+      icon: r.icon,
+      requiredPoints: r.requiredPoints,
+      intervalPoints: r.intervalPoints,
+      timesUnlocked,
+      timesActivated: r.timesActivated,
+      timesClaimed: r.timesClaimed,
+      timesAvailable,
+      timesPending,
+      nextUnlockAt
+    };
+  });
 }
 
 function getStreak(today: string) {
@@ -545,7 +951,18 @@ function getStreak(today: string) {
 }
 
 function getBadges(streak: number) {
-  const row = getDb()
+  const db = getDb();
+  const badges = db.prepare(`SELECT * FROM badges ORDER BY id ASC`).all() as {
+    id: number;
+    name: string;
+    description: string;
+    icon: string;
+    xp: number;
+    condition_type: string;
+    condition_value: number;
+  }[];
+
+  const row = db
     .prepare(
       `SELECT
         COALESCE(SUM(de.quantity), 0) as totalUnits,
@@ -555,50 +972,59 @@ function getBadges(streak: number) {
        JOIN task_types tt ON tt.id = de.task_type_id`
     )
     .get() as { totalUnits: number; puzzleUnits: number; botUnits: number };
-  const bonusRow = getDb()
+    
+  const bonusRow = db
     .prepare("SELECT COUNT(*) as count FROM goal_bonuses")
     .get() as { count: number };
 
-  return [
-    {
-      name: "Premier coup",
-      description: "Terminer ta première activité d'échecs.",
-      earned: row.totalUnits > 0
-    },
-    {
-      name: "Objectif atteint",
-      description: "Atteindre un objectif hebdomadaire.",
-      earned: bonusRow.count > 0
-    },
-    {
-      name: "Série de 7 jours",
-      description: "Noter du travail d'échecs sept jours de suite.",
-      earned: streak >= 7
-    },
-    {
-      name: "Force des puzzles",
-      description: "Résoudre 100 puzzles.",
-      earned: row.puzzleUnits >= 100
-    },
-    {
-      name: "Combattante des bots",
-      description: "Jouer 10 parties contre les bots.",
-      earned: row.botUnits >= 10
+  return badges.map((b) => {
+    let earned = false;
+    switch (b.condition_type) {
+      case "total_units":
+        earned = row.totalUnits >= b.condition_value;
+        break;
+      case "puzzle_units":
+        earned = row.puzzleUnits >= b.condition_value;
+        break;
+      case "bot_units":
+        earned = row.botUnits >= b.condition_value;
+        break;
+      case "streak":
+        earned = streak >= b.condition_value;
+        break;
+      case "weekly_goals":
+        earned = bonusRow.count >= b.condition_value;
+        break;
+      default:
+        earned = false;
+        break;
     }
-  ] satisfies Badge[];
+
+    return {
+      id: b.id,
+      name: b.name,
+      description: b.description,
+      icon: b.icon,
+      xp: b.xp,
+      conditionType: b.condition_type,
+      conditionValue: b.condition_value,
+      earned
+    };
+  }) satisfies Badge[];
 }
 
 export function getAppState(): AppState {
   awardReachedWeeklyBonuses();
-  unlockEligibleRewards();
 
   const today = formatLocalDate();
   const currentWeekStart = getCurrentWeekStart();
   const workPoints = getWorkPoints();
   const bonusPoints = getBonusPoints();
-  const totalPoints = workPoints + bonusPoints;
-  const level = Math.floor(totalPoints / 100) + 1;
   const streak = getStreak(today);
+  const badges = getBadges(streak);
+  const badgePoints = badges.filter(b => b.earned).reduce((sum, b) => sum + b.xp, 0);
+  const totalPoints = workPoints + bonusPoints + badgePoints;
+  const level = Math.floor(totalPoints / 100) + 1;
 
   return {
     today,
@@ -606,13 +1032,14 @@ export function getAppState(): AppState {
     totalPoints,
     workPoints,
     bonusPoints,
+    badgePoints,
     level,
     nextLevelAt: level * 100,
     streak,
     todayTasks: getTodayTasks(today),
     taskTypes: getTaskTypes(),
     weeklyGoals: getWeeklyGoals(currentWeekStart),
-    rewards: getRewards(),
-    badges: getBadges(streak)
+    rewards: getRewards(totalPoints),
+    badges
   };
 }

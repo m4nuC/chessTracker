@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import {
+  activateReward as activateRewardDb,
   addDailyEntry,
-  claimReward,
   createReward,
   createSession,
   createTaskType,
@@ -15,8 +15,14 @@ import {
   deleteTaskType as deleteTaskTypeDb,
   getCurrentWeekStart,
   getSession,
+  removeLastDailyEntry,
+  resetDatabase as resetDatabaseDb,
   setTaskTypeActive,
   setWeeklyGoalActive,
+  createBadge,
+  deleteBadge as deleteBadgeDb,
+  updateReward as updateRewardDb,
+  validateRewardClaim,
   type Role
 } from "@/lib/db";
 
@@ -178,6 +184,12 @@ export async function toggleWeeklyGoal(formData: FormData) {
   revalidatePath("/");
 }
 
+function parseIntervalPoints(formData: FormData) {
+  if (getString(formData, "repeatable") !== "true") return null;
+  const interval = getNonNegativeInteger(formData, "intervalPoints");
+  return interval > 0 ? interval : null;
+}
+
 export async function addReward(formData: FormData) {
   await requireAdmin();
 
@@ -191,8 +203,37 @@ export async function addReward(formData: FormData) {
     name,
     description: getString(formData, "description"),
     icon: getString(formData, "icon") || "trophy",
-    requiredPoints: getNonNegativeInteger(formData, "requiredPoints")
+    requiredPoints: getNonNegativeInteger(formData, "requiredPoints"),
+    intervalPoints: parseIntervalPoints(formData)
   });
+
+  revalidatePath("/");
+}
+
+export async function updateReward(formData: FormData) {
+  await requireAdmin();
+
+  const id = getPositiveInteger(formData, "id");
+  const name = getString(formData, "name");
+
+  if (!id || !name) return;
+
+  updateRewardDb({
+    id,
+    name,
+    description: getString(formData, "description"),
+    icon: getString(formData, "icon") || "trophy",
+    requiredPoints: getNonNegativeInteger(formData, "requiredPoints"),
+    intervalPoints: parseIntervalPoints(formData)
+  });
+
+  revalidatePath("/");
+}
+
+export async function activateReward(formData: FormData) {
+  await requireChild();
+
+  activateRewardDb(getPositiveInteger(formData, "id"));
 
   revalidatePath("/");
 }
@@ -200,7 +241,7 @@ export async function addReward(formData: FormData) {
 export async function markRewardClaimed(formData: FormData) {
   await requireAdmin();
 
-  claimReward(getPositiveInteger(formData, "id"));
+  validateRewardClaim(getPositiveInteger(formData, "id"));
 
   revalidatePath("/");
 }
@@ -219,4 +260,55 @@ export async function recordWork(formData: FormData) {
   addDailyEntry(getPositiveInteger(formData, "taskTypeId"));
 
   revalidatePath("/");
+}
+
+export async function undoWork(formData: FormData) {
+  await requireChild();
+
+  removeLastDailyEntry(getPositiveInteger(formData, "taskTypeId"));
+
+  revalidatePath("/");
+}
+
+export async function addBadge(formData: FormData) {
+  await requireAdmin();
+
+  const name = getString(formData, "name");
+  const conditionType = getString(formData, "conditionType");
+
+  if (!name || !conditionType) {
+    return;
+  }
+
+  createBadge({
+    name,
+    description: getString(formData, "description"),
+    icon: getString(formData, "icon") || "🏆",
+    xp: getNonNegativeInteger(formData, "xp"),
+    conditionType,
+    conditionValue: getPositiveInteger(formData, "conditionValue")
+  });
+
+  revalidatePath("/");
+}
+
+export async function deleteBadge(formData: FormData) {
+  await requireAdmin();
+
+  deleteBadgeDb(getPositiveInteger(formData, "id"));
+
+  revalidatePath("/");
+}
+
+export async function resetDatabase(formData: FormData) {
+  await requireAdmin();
+
+  if (getString(formData, "confirm") !== "RESET") {
+    redirect("/?reset=invalid");
+  }
+
+  resetDatabaseDb();
+
+  revalidatePath("/");
+  redirect("/?reset=ok");
 }
