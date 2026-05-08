@@ -12,7 +12,9 @@ import {
   resetDatabase,
   toggleTaskType,
   toggleWeeklyGoal,
-  activateReward
+  activateReward,
+  updateTaskTypePoints,
+  updateReward
 } from "@/app/actions";
 import { getAppState, type AppState, type Reward, type WeeklyGoal } from "@/lib/db";
 import { XpCarousel } from "@/components/XpCarousel";
@@ -237,6 +239,8 @@ function XpAdventure({ state }: { state: AppState }) {
             {visibleGroups.map(([targetPoints, group]) => {
               const rewardPercent = Math.min(100, (targetPoints / maxPoints) * 100);
 
+              const isFuture = targetPoints > state.totalPoints;
+
               let markerClass = "reward-marker ";
               if (group.some((r) => r.timesAvailable > 0 || r.timesPending > 0))
                 markerClass += "unlocked";
@@ -244,9 +248,15 @@ function XpAdventure({ state }: { state: AppState }) {
                 markerClass += "claimed";
               else markerClass += "locked";
 
-              const titleText = group
-                .map((r) => `${r.name} (${targetPoints} XP)`)
-                .join(" · ");
+              if (isFuture) {
+                markerClass += " blurred";
+              }
+
+              const titleText = isFuture
+                ? "Mystère"
+                : group
+                    .map((r) => `${r.name} (${targetPoints} XP)`)
+                    .join(" · ");
 
               return (
                 <div
@@ -487,10 +497,25 @@ function AdminDashboard({
                 <span>
                   <strong>{task.icon} {task.name}</strong>
                   <small>
-                    {task.pointsPerUnit} XP par {task.unitLabel} /{" "}
                     {activeStatusLabel(task.active)}
                   </small>
                 </span>
+                <form action={updateTaskTypePoints} className="inline-update-form">
+                  <input name="id" type="hidden" value={task.id} />
+                  <label className="sr-only">XP par {task.unitLabel}</label>
+                  <div className="inline-input-group">
+                    <input 
+                      name="pointsPerUnit" 
+                      type="number" 
+                      min="1" 
+                      defaultValue={task.pointsPerUnit} 
+                      className="small-input"
+                      style={{ width: "4rem" }}
+                    />
+                    <span className="unit-label">XP/{task.unitLabel}</span>
+                    <button className="small-button primary" type="submit">OK</button>
+                  </div>
+                </form>
                 <span className="row-actions">
                   <form action={toggleTaskType}>
                     <input name="id" type="hidden" value={task.id} />
@@ -617,6 +642,42 @@ function AdminDashboard({
                     {reward.timesUnlocked} fois débloquée | {reward.timesPending} en attente | Prochain: {reward.nextUnlockAt ?? "Max"} XP
                   </small>
                 </span>
+                <form action={updateReward} className="inline-update-form">
+                  <input name="id" type="hidden" value={reward.id} />
+                  <input name="name" type="hidden" value={reward.name} />
+                  <input name="description" type="hidden" value={reward.description} />
+                  <input name="icon" type="hidden" value={reward.icon} />
+                  {reward.intervalPoints !== null && (
+                    <input name="repeatable" type="hidden" value="true" />
+                  )}
+                  <div className="inline-input-group">
+                    <label className="inline-label">
+                      Requis:
+                      <input 
+                        name="requiredPoints" 
+                        type="number" 
+                        min="0" 
+                        defaultValue={reward.requiredPoints} 
+                        className="small-input"
+                        style={{ width: "5rem" }}
+                      />
+                    </label>
+                    {reward.intervalPoints !== null ? (
+                      <label className="inline-label">
+                        Intervalle:
+                        <input 
+                          name="intervalPoints" 
+                          type="number" 
+                          min="1" 
+                          defaultValue={reward.intervalPoints} 
+                          className="small-input"
+                          style={{ width: "5rem" }}
+                        />
+                      </label>
+                    ) : null}
+                    <button className="small-button primary" type="submit">OK</button>
+                  </div>
+                </form>
                 <span className="row-actions">
                   {reward.timesPending > 0 ? (
                     <form action={markRewardClaimed}>

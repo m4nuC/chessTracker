@@ -18,6 +18,7 @@ import {
   removeLastDailyEntry,
   resetDatabase as resetDatabaseDb,
   setTaskTypeActive,
+  updateTaskTypePoints as updateTaskTypePointsDb,
   setWeeklyGoalActive,
   createBadge,
   deleteBadge as deleteBadgeDb,
@@ -147,6 +148,17 @@ export async function toggleTaskType(formData: FormData) {
   setTaskTypeActive(
     getPositiveInteger(formData, "id"),
     getString(formData, "active") === "true"
+  );
+
+  revalidatePath("/");
+}
+
+export async function updateTaskTypePoints(formData: FormData) {
+  await requireAdmin();
+
+  updateTaskTypePointsDb(
+    getPositiveInteger(formData, "id"),
+    getPositiveInteger(formData, "pointsPerUnit")
   );
 
   revalidatePath("/");

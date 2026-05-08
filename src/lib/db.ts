@@ -408,6 +408,12 @@ export function setTaskTypeActive(id: number, active: boolean) {
     .run(active ? 1 : 0, id);
 }
 
+export function updateTaskTypePoints(id: number, pointsPerUnit: number) {
+  getDb()
+    .prepare("UPDATE task_types SET points_per_unit = ? WHERE id = ?")
+    .run(pointsPerUnit, id);
+}
+
 export function deleteTaskType(id: number) {
   const db = getDb();
 
