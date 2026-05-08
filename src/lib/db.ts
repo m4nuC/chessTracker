@@ -172,65 +172,8 @@ function createDb() {
 
   migrateRewardsTable(db);
   seedDefaults(db);
-  migrateRewards(db);
 
   return db;
-}
-
-type RewardSeed = {
-  name: string;
-  description: string;
-  icon: string;
-  requiredPoints: number;
-  intervalPoints: number | null;
-};
-
-const REWARD_DEFINITIONS: RewardSeed[] = [
-  { name: "Choix du dessert", description: "Choisis le dessert ce soir.", icon: "🍨", requiredPoints: 100, intervalPoints: null },
-  { name: "Goûter spécial", description: "Un goûter de ton choix.", icon: "🍪", requiredPoints: 150, intervalPoints: 670 },
-  { name: "Bon 30 min console", description: "30 minutes de jeu console.", icon: "🎮", requiredPoints: 250, intervalPoints: 750 },
-  { name: "Choix du film du soir", description: "Tu choisis le film qu'on regarde.", icon: "🎬", requiredPoints: 450, intervalPoints: 1500 },
-  { name: "Sortie glace", description: "Une sortie pour aller manger une glace.", icon: "🍦", requiredPoints: 700, intervalPoints: 2500 },
-  { name: "Plus 15 min avant dodo", description: "15 minutes de plus avant le coucher.", icon: "🌙", requiredPoints: 1200, intervalPoints: null },
-  { name: "Tu choisis le repas du soir", description: "Tu décides du menu de ce soir.", icon: "🍽️", requiredPoints: 1400, intervalPoints: 3500 },
-  { name: "Petit jouet surprise", description: "Un petit jouet à choisir ensemble.", icon: "🎁", requiredPoints: 1900, intervalPoints: null },
-  { name: "Choix du goûter d'école", description: "Tu choisis ton goûter pour l'école.", icon: "🥐", requiredPoints: 2350, intervalPoints: null },
-  { name: "Skin Epic Overwatch", description: "Un skin Epic Overwatch au choix.", icon: "🎨", requiredPoints: 2500, intervalPoints: 3000 },
-  { name: "Une heure d'écran", description: "Une heure d'écran (TV ou tablette).", icon: "📺", requiredPoints: 2680, intervalPoints: null },
-  { name: "Bain moussant", description: "Un bain avec mousse et bulles.", icon: "🛁", requiredPoints: 3050, intervalPoints: null },
-  { name: "1 roman de ton choix", description: "Un roman que tu choisis.", icon: "📖", requiredPoints: 3300, intervalPoints: 4000 },
-  { name: "Petite figurine", description: "Une petite figurine ou jouet à choisir.", icon: "🦄", requiredPoints: 3700, intervalPoints: null },
-  { name: "Bon 1 h console", description: "1 heure de jeu console.", icon: "🎮", requiredPoints: 4000, intervalPoints: 2500 },
-  { name: "Maquillage et vernis", description: "Séance maquillage ou pose de vernis.", icon: "✨", requiredPoints: 4350, intervalPoints: null },
-  { name: "Skin Légendaire Overwatch", description: "Un skin Légendaire Overwatch au choix.", icon: "👑", requiredPoints: 4500, intervalPoints: 5000 },
-  { name: "Atelier cuisine", description: "Préparer un gâteau ensemble.", icon: "🧁", requiredPoints: 5250, intervalPoints: null },
-  { name: "Sortie spéciale", description: "Musée, ciné, escape game ou similaire.", icon: "🎟️", requiredPoints: 5500, intervalPoints: 6000 },
-  { name: "Dessert spécial", description: "Un dessert spécial choisi par toi.", icon: "🍰", requiredPoints: 5950, intervalPoints: null },
-  { name: "Soirée ciné maison", description: "Film à la maison avec popcorn.", icon: "🎥", requiredPoints: 6700, intervalPoints: null },
-  { name: "Bowling ou trampoline park", description: "Une sortie sportive et fun.", icon: "🎳", requiredPoints: 7000, intervalPoints: null },
-  { name: "Skin Mythique Overwatch", description: "Un skin Mythique Overwatch au choix.", icon: "💎", requiredPoints: 8000, intervalPoints: 9000 },
-  { name: "Petite BD", description: "Une petite BD à choisir.", icon: "📚", requiredPoints: 8700, intervalPoints: null },
-  { name: "Beau jeu d'échecs", description: "Un beau jeu d'échecs rien qu'à toi.", icon: "♟️", requiredPoints: 9000, intervalPoints: null },
-  { name: "Sortie balade", description: "Balade vélo ou au parc.", icon: "🚲", requiredPoints: 9750, intervalPoints: null },
-  { name: "Boîte de Lego", description: "Une petite boîte de Lego.", icon: "🧱", requiredPoints: 10450, intervalPoints: null },
-  { name: "Sortie papeterie", description: "Choisir des fournitures à la papeterie.", icon: "📒", requiredPoints: 11150, intervalPoints: null },
-  { name: "Sortie surprise", description: "Un endroit que tu adores.", icon: "🎡", requiredPoints: 11700, intervalPoints: null },
-  { name: "Grande sortie", description: "Zoo, aquarium ou parc d'attractions.", icon: "🦋", requiredPoints: 12000, intervalPoints: null }
-];
-
-function migrateRewards(db: Database.Database) {
-  const checkStmt = db.prepare("SELECT 1 FROM rewards WHERE name = ?");
-  const insertStmt = db.prepare(
-    `INSERT INTO rewards (name, description, icon, required_points, interval_points) VALUES (?, ?, ?, ?, ?)`
-  );
-
-  db.transaction(() => {
-    for (const r of REWARD_DEFINITIONS) {
-      if (!checkStmt.get(r.name)) {
-        insertStmt.run(r.name, r.description, r.icon, r.requiredPoints, r.intervalPoints);
-      }
-    }
-  })();
 }
 
 function migrateRewardsTable(db: Database.Database) {
@@ -258,25 +201,25 @@ function seedDefaults(db: Database.Database) {
       `INSERT INTO badges (name, description, icon, xp, condition_type, condition_value) VALUES (?, ?, ?, ?, ?, ?)`
     );
     db.transaction(() => {
-      stmt.run("Premier coup", "Terminer 10 activités d'échecs.", "🎯", 15, "total_units", 10);
-      stmt.run("Premiers puzzles", "Résoudre 25 puzzles.", "🧩", 12, "puzzle_units", 25);
+      stmt.run("Premier coup", "Terminer 10 activités d'échecs.", "🎯", 20, "total_units", 10);
+      stmt.run("Premiers puzzles", "Résoudre 25 puzzles.", "🧩", 25, "puzzle_units", 25);
       stmt.run("Premier match", "Jouer ta première partie contre un bot.", "⚔️", 25, "bot_units", 1);
-      stmt.run("Trois jours d'affilée", "Trois jours d'échecs de suite.", "🔁", 30, "streak", 3);
-      stmt.run("Objectif décroché", "Atteindre un objectif hebdomadaire.", "🏆", 30, "weekly_goals", 1);
+      stmt.run("Trois jours d'affilée", "Trois jours d'échecs de suite.", "🔁", 40, "streak", 3);
+      stmt.run("Objectif décroché", "Atteindre un objectif hebdomadaire.", "🏆", 50, "weekly_goals", 1);
       stmt.run("Une semaine sérieuse", "Sept jours d'échecs de suite.", "📅", 75, "streak", 7);
-      stmt.run("100 puzzles", "Résoudre 100 puzzles au total.", "🧩", 54, "puzzle_units", 100);
-      stmt.run("10 bots vaincus", "Jouer 10 parties contre les bots.", "🤖", 42, "bot_units", 10);
+      stmt.run("100 puzzles", "Résoudre 100 puzzles au total.", "🧩", 60, "puzzle_units", 100);
+      stmt.run("10 bots vaincus", "Jouer 10 parties contre les bots.", "🤖", 80, "bot_units", 10);
       stmt.run("300 puzzles", "Résoudre 300 puzzles au total.", "💪", 100, "puzzle_units", 300);
       stmt.run("Triple champ", "Atteindre 3 objectifs hebdomadaires au total.", "🏅", 100, "weekly_goals", 3);
-      stmt.run("Mois complet", "Trente jours d'échecs de suite.", "📆", 120, "streak", 30);
-      stmt.run("600 puzzles", "Résoudre 600 puzzles au total.", "🧠", 110, "puzzle_units", 600);
-      stmt.run("25 bots vaincus", "Jouer 25 parties contre les bots.", "🤖", 120, "bot_units", 25);
-      stmt.run("1000 puzzles", "Résoudre 1000 puzzles au total.", "👑", 200, "puzzle_units", 1000);
+      stmt.run("Mois complet", "Trente jours d'échecs de suite.", "📆", 200, "streak", 30);
+      stmt.run("600 puzzles", "Résoudre 600 puzzles au total.", "🧠", 150, "puzzle_units", 600);
+      stmt.run("25 bots vaincus", "Jouer 25 parties contre les bots.", "🤖", 150, "bot_units", 25);
+      stmt.run("1000 puzzles", "Résoudre 1000 puzzles au total.", "👑", 250, "puzzle_units", 1000);
       stmt.run("Cap des 1000 unités", "Mille activités d'échecs au total.", "🌟", 300, "total_units", 1000);
-      stmt.run("Combo de 14 jours", "Quatorze jours d'échecs de suite.", "🔥", 60, "streak", 14);
+      stmt.run("Combo de 14 jours", "Quatorze jours d'échecs de suite.", "🔥", 100, "streak", 14);
       stmt.run("Marathon", "Soixante jours d'échecs de suite.", "🏃", 250, "streak", 60);
       stmt.run("50 bots vaincus", "Jouer 50 parties contre les bots.", "🤖", 200, "bot_units", 50);
-      stmt.run("5 objectifs hebdo", "Atteindre 5 objectifs hebdomadaires au total.", "⭐", 45, "weekly_goals", 5);
+      stmt.run("5 objectifs hebdo", "Atteindre 5 objectifs hebdomadaires au total.", "⭐", 150, "weekly_goals", 5);
       stmt.run("500 activités", "Cinq cents activités d'échecs au total.", "🚀", 200, "total_units", 500);
     })();
   }
@@ -312,6 +255,30 @@ function seedDefaults(db: Database.Database) {
     })();
   }
 
+  const rewardsCount = db.prepare("SELECT COUNT(*) as count FROM rewards").get() as { count: number };
+  if (rewardsCount.count === 0) {
+    const stmt = db.prepare(
+      `INSERT INTO rewards (name, description, icon, required_points, interval_points) VALUES (?, ?, ?, ?, ?)`
+    );
+    db.transaction(() => {
+      stmt.run("Choix du dessert", "Choisis le dessert ce soir.", "🍨", 100, null);
+      stmt.run("Choix du film du soir", "Tu choisis le film qu'on regarde.", "🎬", 450, 1500);
+      stmt.run("Sortie glace", "Une sortie pour aller manger une glace.", "🍦", 700, 2500);
+      stmt.run("Tu choisis le repas du soir", "Tu décides du menu de ce soir.", "🍽️", 1400, 3500);
+      stmt.run("Petit jouet surprise", "Un petit jouet à choisir ensemble.", "🎁", 1900, null);
+      stmt.run("Skin Epic Overwatch", "Un skin Epic Overwatch au choix.", "🎨", 2500, 3000);
+      stmt.run("1 roman de ton choix", "Un roman que tu choisis.", "📖", 3300, 4000);
+      stmt.run("Skin Légendaire Overwatch", "Un skin Légendaire Overwatch au choix.", "👑", 4500, 5000);
+      stmt.run("Sortie spéciale", "Musée, ciné, escape game ou similaire.", "🎟️", 5500, 6000);
+      stmt.run("Bowling ou trampoline park", "Une sortie sportive et fun.", "🎳", 7000, null);
+      stmt.run("Skin Mythique Overwatch", "Un skin Mythique Overwatch au choix.", "💎", 8000, 9000);
+      stmt.run("Beau jeu d'échecs", "Un beau jeu d'échecs rien qu'à toi.", "♟️", 9000, null);
+      stmt.run("Grande sortie", "Zoo, aquarium ou parc d'attractions.", "🦋", 12000, null);
+      stmt.run("Bon 30 min console", "30 minutes de jeu console.", "🎮", 250, 750);
+      stmt.run("Bon 1 h console", "1 heure de jeu console.", "🎮", 4000, 2500);
+      stmt.run("Goûter spécial", "Un goûter de ton choix.", "🍪", 150, 670);
+    })();
+  }
 }
 
 function computeCurrentWeekStartIso() {

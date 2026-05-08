@@ -135,41 +135,30 @@ function StatCards({ state }: { state: AppState }) {
 
 function WeeklyGoals({ state }: { state: AppState }) {
   return (
-    <section className="panel">
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">Cette semaine</p>
-          <h2>Objectifs hebdomadaires</h2>
-        </div>
-        <span className="pill">Début le {formatDate(state.currentWeekStart)}</span>
+    <section className="panel goals-panel">
+      <div className="goals-header">
+        <p className="eyebrow">Cette semaine</p>
+        <h2>Objectifs</h2>
+        <span className="pill purple-pill">Début {formatDate(state.currentWeekStart)}</span>
       </div>
 
+      <hr className="goals-divider" />
+
       {state.weeklyGoals.length > 0 ? (
-        <div className="goal-list">
+        <div className="goal-bars-container">
           {state.weeklyGoals.map((goal) => (
-            <article className="goal-card" key={goal.id}>
-              <div className="goal-title">
-                <span className="icon-badge">{goal.taskIcon}</span>
-                <div>
-                  <strong>{goal.taskName}</strong>
-                  <span>
-                    {goal.progressQuantity} / {goal.targetQuantity}{" "}
-                    {goal.unitLabel}
-                    {goal.targetQuantity === 1 ? "" : "s"}
-                  </span>
-                </div>
-              </div>
-              <div className="progress-track">
+            <div className="goal-bar-col" key={goal.id}>
+              <div className="vertical-track">
                 <div
-                  className="progress-fill"
-                  style={{ width: `${progressPercent(goal)}%` }}
+                  className="vertical-fill"
+                  style={{ height: `${progressPercent(goal)}%` }}
                 />
               </div>
-              <small>
-                Bonus: {goal.bonusPoints} XP{" "}
-                {goal.bonusAwarded ? "(attribué)" : "(débloqué une fois atteint)"}
-              </small>
-            </article>
+              <div className="goal-bar-icon">{goal.taskIcon}</div>
+              <span className="goal-bar-text">
+                {goal.progressQuantity}/{goal.targetQuantity}
+              </span>
+            </div>
           ))}
         </div>
       ) : (
@@ -307,12 +296,12 @@ function XpAdventure({ state }: { state: AppState }) {
           {/* Back layer */}
           <path 
             fill="rgba(255, 255, 255, 0.45)" 
-            d="M 0 120 L 0 70 A 70 70 0 0 1 120 60 A 90 90 0 0 1 280 40 A 80 80 0 0 1 420 55 A 100 100 0 0 1 600 30 A 85 85 0 0 1 750 45 A 95 95 0 0 1 900 35 A 80 80 0 0 1 1050 50 A 90 90 0 0 1 1200 60 L 1200 120 Z" 
+            d="M 0 120 L 0 100 A 70 70 0 0 1 120 90 A 90 90 0 0 1 280 70 A 80 80 0 0 1 420 85 A 100 100 0 0 1 600 60 A 85 85 0 0 1 750 75 A 95 95 0 0 1 900 65 A 80 80 0 0 1 1050 80 A 90 90 0 0 1 1200 90 L 1200 120 Z" 
           />
           {/* Front layer */}
           <path 
             fill="#ffffff" 
-            d="M 0 120 L 0 80 A 60 60 0 0 1 100 70 A 80 80 0 0 1 250 60 A 70 70 0 0 1 380 75 A 90 90 0 0 1 540 50 A 75 75 0 0 1 680 65 A 85 85 0 0 1 830 55 A 100 100 0 0 1 1000 70 A 60 60 0 0 1 1100 85 A 60 60 0 0 1 1200 80 L 1200 120 Z" 
+            d="M 0 120 L 0 110 A 60 60 0 0 1 100 100 A 80 80 0 0 1 250 90 A 70 70 0 0 1 380 105 A 90 90 0 0 1 540 80 A 75 75 0 0 1 680 95 A 85 85 0 0 1 830 85 A 100 100 0 0 1 1000 100 A 60 60 0 0 1 1100 115 A 60 60 0 0 1 1200 110 L 1200 120 Z" 
           />
         </svg>
       </div>
@@ -415,24 +404,28 @@ function ChildDashboard({ state }: { state: AppState }) {
         )}
       </section>
 
-      <WeeklyGoals state={state} />
+      <div className="dashboard-bottom-grid">
+        <WeeklyGoals state={state} />
 
-      <section className="panel">
-        <p className="eyebrow">Badges</p>
-        <h2>Collection</h2>
-        <div className="badge-cloud">
-          {state.badges.map((badge) => (
-            <div className={`badge-node ${badge.earned ? "earned" : "locked"}`} key={badge.name}>
-              <div className="badge-icon">{badge.icon}</div>
-              <div className="badge-tooltip">
-                <strong>{badge.name}</strong>
-                <small>{badge.description}</small>
-                <span className="badge-xp">+{badge.xp} XP</span>
+        <section className="panel badges-panel">
+          <div className="badges-header">
+            <p className="eyebrow">Badges</p>
+            <h2>Collection</h2>
+          </div>
+          <div className="badge-cloud">
+            {state.badges.map((badge) => (
+              <div className={`badge-node ${badge.earned ? "earned" : "locked"}`} key={badge.name}>
+                <div className="badge-icon">{badge.icon}</div>
+                <div className="badge-tooltip">
+                  <strong>{badge.name}</strong>
+                  <small>{badge.description}</small>
+                  <span className="badge-xp">+{badge.xp} XP</span>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
+      </div>
     </main>
   );
 }
