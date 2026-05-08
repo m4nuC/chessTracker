@@ -1,0 +1,526 @@
+:root {
+  color-scheme: light;
+  --background: #f7f3e8;
+  --foreground: #241c15;
+  --muted: #695f55;
+  --card: #fffaf0;
+  --accent: #7c3aed;
+  --accent-soft: #ede9fe;
+  --accent-foreground: #ffffff;
+  --border: #e6dccb;
+  --gold: #f59e0b;
+  --gold-soft: #fef3c7;
+  --success: #15803d;
+  --danger: #b91c1c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: radial-gradient(circle at top left, #fff7cc, transparent 28rem),
+    var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+button {
+  font: inherit;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 0.85rem;
+  background: #ffffff;
+  color: var(--foreground);
+  font: inherit;
+  padding: 0.75rem 0.85rem;
+}
+
+textarea {
+  min-height: 5rem;
+  resize: vertical;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+.page {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 2rem;
+}
+
+.app-shell {
+  width: min(100%, 72rem);
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.hero-card,
+.panel,
+.stat-card,
+.task-card,
+.goal-card,
+.xp-adventure-single {
+  border: 1px solid var(--border);
+  border-radius: 1.5rem;
+  background: color-mix(in srgb, var(--card) 92%, white);
+  box-shadow: 0 1.25rem 4rem rgb(36 28 21 / 12%);
+}
+
+.hero-card {
+  width: min(100%, 54rem);
+  padding: 2rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.75rem;
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(2.25rem, 6vw, 4.5rem);
+  line-height: 1;
+}
+
+h2 {
+  margin-bottom: 1rem;
+  font-size: 1.35rem;
+}
+
+h3 {
+  margin-bottom: 0.5rem;
+}
+
+p {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.topbar,
+.section-heading,
+.goal-title,
+.management-list li,
+.simple-list li {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.topbar {
+  margin-bottom: 1.5rem;
+}
+
+.login-grid,
+.stats,
+.task-grid,
+.admin-grid,
+.two-column {
+  display: grid;
+  gap: 1rem;
+}
+
+.login-grid,
+.two-column {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 1rem;
+}
+
+.task-grid,
+.admin-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.panel,
+.stat-card,
+.task-card,
+.goal-card,
+.xp-adventure-single {
+  padding: 1.25rem;
+}
+
+.form-stack {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.form-stack label {
+  color: var(--muted);
+  display: grid;
+  font-size: 0.9rem;
+  font-weight: 700;
+  gap: 0.4rem;
+}
+
+.primary-button,
+.secondary-button,
+.ghost-button,
+.small-button,
+.task-button {
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 0.85rem 1.25rem;
+}
+
+.primary-button {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.secondary-button {
+  background: var(--foreground);
+  color: #ffffff;
+}
+
+.ghost-button,
+.small-button {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.small-button {
+  padding: 0.55rem 0.8rem;
+}
+
+.task-button {
+  background: linear-gradient(135deg, var(--accent), #ec4899);
+  color: #ffffff;
+  font-size: 1rem;
+  width: 100%;
+}
+
+.primary-button:hover,
+.secondary-button:hover,
+.ghost-button:hover,
+.small-button:hover,
+.task-button:hover {
+  filter: brightness(0.96);
+}
+
+.notice {
+  border-radius: 1rem;
+  font-weight: 700;
+  padding: 0.85rem 1rem;
+}
+
+.danger {
+  background: #fee2e2;
+  color: var(--danger);
+}
+
+.stat-card span,
+.stat-card small,
+.task-card p,
+.task-card small,
+.goal-card small,
+.simple-list small,
+.management-list small,
+.badge-list small {
+  color: var(--muted);
+  display: block;
+}
+
+.stat-card strong {
+  display: block;
+  font-size: 2rem;
+  margin: 0.2rem 0;
+}
+
+.panel {
+  margin-bottom: 1rem;
+}
+
+.task-icon {
+  align-items: center;
+  background: var(--gold-soft);
+  border-radius: 1.25rem;
+  display: inline-flex;
+  font-size: 2.25rem;
+  justify-content: center;
+  min-height: 4rem;
+  min-width: 4rem;
+  padding: 0.75rem;
+}
+
+.task-card form {
+  margin-top: 1rem;
+}
+
+.xp-adventure-single {
+  background:
+    radial-gradient(circle at top right, #fde68a, transparent 20rem),
+    linear-gradient(145deg, #fff7ed, #f5f3ff);
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.xp-hero-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.xp-hero-content h2 {
+  color: var(--accent);
+  font-size: clamp(2rem, 5vw, 3.75rem);
+  margin: 0;
+}
+
+.xp-hero-content strong {
+  display: block;
+  font-size: clamp(2rem, 6vw, 4rem);
+  line-height: 1;
+  margin: 0.5rem 0;
+}
+
+.progress-container {
+  position: relative;
+  margin-top: 1rem;
+  margin-bottom: 5rem; /* space for markers */
+  padding: 0 1.5rem; /* give space for edge markers */
+}
+
+.progress-track.big {
+  height: 1.25rem;
+}
+
+.reward-marker {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 10;
+}
+
+.reward-dot {
+  align-items: center;
+  background: color-mix(in srgb, var(--card) 70%, #ffffff);
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  display: inline-flex;
+  font-weight: 800;
+  height: 3.5rem;
+  justify-content: center;
+  width: 3.5rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+.reward-marker.claimed .reward-dot,
+.reward-marker.unlocked .reward-dot {
+  background: var(--gold);
+  border-color: #ffffff;
+  color: #ffffff;
+}
+
+.reward-marker.locked .reward-dot {
+  background: var(--accent-soft);
+  border-color: #ffffff;
+  color: var(--accent);
+  opacity: 0.8;
+}
+
+.reward-label {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 0.5rem;
+  text-align: center;
+  width: max-content;
+  max-width: 8rem;
+}
+
+.reward-label strong {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--foreground);
+}
+
+.reward-label small {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.activity-panel {
+  background: linear-gradient(180deg, #fffaf0, #ffffff);
+}
+
+.task-card {
+  display: grid;
+}
+
+.task-card-header {
+  align-items: flex-start;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+}
+
+.today-score {
+  background: var(--accent-soft);
+  border-radius: 1.25rem;
+  margin-top: auto;
+  padding: 0.85rem;
+}
+
+.today-score strong {
+  color: var(--accent);
+  display: block;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.two-column .stats {
+  grid-template-columns: 1fr;
+  margin-bottom: 0;
+}
+
+.goal-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.goal-card {
+  box-shadow: none;
+}
+
+.icon-badge {
+  align-items: center;
+  background: var(--accent-soft);
+  border-radius: 999px;
+  display: inline-flex;
+  font-weight: 800;
+  height: 2.5rem;
+  justify-content: center;
+  min-width: 2.5rem;
+  padding: 0 0.65rem;
+}
+
+.pill {
+  background: var(--accent-soft);
+  border-radius: 999px;
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.45rem 0.75rem;
+}
+
+.progress-track {
+  background: #eadfcd;
+  border-radius: 999px;
+  height: 0.75rem;
+  margin: 1rem 0 0.5rem;
+  overflow: hidden;
+}
+
+.progress-fill {
+  background: linear-gradient(90deg, var(--accent), #f59e0b);
+  border-radius: inherit;
+  height: 100%;
+}
+
+.simple-list,
+.management-list,
+.badge-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.simple-list,
+.management-list,
+.badge-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.management-list {
+  border-top: 1px solid var(--border);
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
+.management-list li,
+.simple-list li,
+.badge-list li {
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 0.75rem;
+}
+
+.row-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.5rem;
+}
+
+.badge-list li {
+  opacity: 0.55;
+}
+
+.badge-list li.earned {
+  border-color: color-mix(in srgb, var(--success) 45%, var(--border));
+  opacity: 1;
+}
+
+.badge-list li.earned strong {
+  color: var(--success);
+}
+
+.empty {
+  margin-bottom: 0;
+}
+
+@media (max-width: 900px) {
+  .admin-grid,
+  .login-grid,
+  .stats,
+  .task-grid,
+  .two-column {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar,
+  .section-heading,
+  .management-list li {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
