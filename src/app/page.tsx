@@ -14,7 +14,11 @@ import {
   toggleWeeklyGoal,
   activateReward,
   updateTaskTypePoints,
-  updateReward
+  updateReward,
+  grantBadge,
+  revokeBadge,
+  addBadge,
+  deleteBadge
 } from "@/app/actions";
 import { getAppState, type AppState, type Reward, type WeeklyGoal } from "@/lib/db";
 import { XpCarousel } from "@/components/XpCarousel";
@@ -170,7 +174,7 @@ function WeeklyGoals({ state }: { state: AppState }) {
   );
 }
 
-function XpAdventure({ state }: { state: AppState }) {
+function XpAdventure({ state, previewAll = false }: { state: AppState; previewAll?: boolean }) {
   const rewardTargets = state.rewards.map(rewardMarkerTarget);
 
   const previousTargets = rewardTargets.filter(p => p <= state.totalPoints).sort((a, b) => b - a);
@@ -193,8 +197,8 @@ function XpAdventure({ state }: { state: AppState }) {
   const pastOrPresentGroups = sortedGroups.filter(([tp]) => tp <= state.totalPoints);
   const futureGroups = sortedGroups.filter(([tp]) => tp > state.totalPoints);
 
-  const visibleFutureGroups = futureGroups.slice(0, 3);
-  const hasHiddenGroups = futureGroups.length > 3;
+  const visibleFutureGroups = previewAll ? futureGroups : futureGroups.slice(0, 3);
+  const hasHiddenGroups = previewAll ? false : futureGroups.length > 3;
 
   const visibleGroups = [...pastOrPresentGroups, ...visibleFutureGroups];
 
@@ -252,7 +256,7 @@ function XpAdventure({ state }: { state: AppState }) {
                 markerClass += " blurred";
               }
 
-              const titleText = isFuture
+              const titleText = isFuture && !previewAll
                 ? "Mystère"
                 : group
                     .map((r) => `${r.name} (${targetPoints} XP)`)
@@ -697,6 +701,99 @@ function AdminDashboard({
               </li>
             ))}
           </ul>
+        </div>
+
+        <div className="panel form-stack">
+          <p className="eyebrow">Badges</p>
+          <h2>Créer un badge</h2>
+          <form action={addBadge} className="form-stack">
+            <label>
+              Nom
+              <input name="name" placeholder="Expert en puzzles" required />
+            </label>
+            <label>
+              Description
+              <textarea
+                name="description"
+                placeholder="Tu as résolu beaucoup de puzzles !"
+              />
+            </label>
+            <label>
+              Icône (emoji)
+              <input name="icon" placeholder="🧩" />
+            </label>
+            <label>
+              XP
+              <input min="0" name="xp" type="number" defaultValue="50" required />
+            </label>
+            <label>
+              Condition
+              <select name="conditionType" required>
+                <option value="total_units">Unités totales (toutes activités)</option>
+                <option value="puzzle_units">Unités de puzzles</option>
+                <option value="bot_units">Parties contre bot</option>
+                <option value="streak">Série de jours consécutifs</option>
+                <option value="weekly_goals">Objectifs hebdomadaires atteints</option>
+                <option value="manual">Manuel (débloqué par l'admin)</option>
+              </select>
+            </label>
+            <label>
+              Valeur cible
+              <input min="0" name="conditionValue" type="number" defaultValue="10" required />
+            </label>
+            <button className="primary-button" type="submit">
+              Créer le badge
+            </button>
+          </form>
+
+          <ul className="management-list">
+            {state.badges.map((badge) => (
+              <li key={badge.id}>
+                <span>
+                  <strong>{badge.icon} {badge.name}</strong>
+                  <small>
+                    {badge.conditionType} = {badge.conditionValue} | +{badge.xp} XP
+                  </small>
+                  <small>
+                    {badge.earned ? (badge.manuallyEarned ? "✅ Acquis (Manuel)" : "✅ Acquis") : "🔒 Verrouillé"}
+                  </small>
+                </span>
+                <span className="row-actions">
+                  {badge.earned ? (
+                    badge.manuallyEarned && (
+                      <form action={revokeBadge}>
+                        <input name="id" type="hidden" value={badge.id} />
+                        <button className="small-button" type="submit">
+                          Révoquer
+                        </button>
+                      </form>
+                    )
+                  ) : (
+                    <form action={grantBadge}>
+                      <input name="id" type="hidden" value={badge.id} />
+                      <button className="small-button primary" type="submit">
+                        Débloquer
+                      </button>
+                    </form>
+                  )}
+                  <form action={deleteBadge}>
+                    <input name="id" type="hidden" value={badge.id} />
+                    <button className="small-button danger" type="submit">
+                      Supprimer
+                    </button>
+                  </form>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="panel form-stack admin-timeline-preview">
+          <p className="eyebrow">Aperçu</p>
+          <h2>Parcours de récompenses</h2>
+          <div className="preview-timeline-wrapper">
+            <XpAdventure state={state} previewAll={true} />
+          </div>
         </div>
       </section>
 

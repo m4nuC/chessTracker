@@ -64,6 +64,7 @@ export type Badge = {
   name: string;
   description: string;
   earned: boolean;
+  manuallyEarned: boolean;
   icon: string;
   xp: number;
   conditionType: string;
@@ -161,6 +162,10 @@ function createDb() {
       condition_type TEXT NOT NULL,
       condition_value INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS manual_badge_unlocks (
+      badge_id INTEGER PRIMARY KEY REFERENCES badges(id) ON DELETE CASCADE
     );
 
     CREATE INDEX IF NOT EXISTS daily_entries_date_idx
@@ -365,6 +370,7 @@ export function resetDatabase() {
 
   db.transaction(() => {
     db.exec(`
+      DELETE FROM manual_badge_unlocks;
       DELETE FROM goal_bonuses;
       DELETE FROM daily_entries;
       DELETE FROM weekly_goals;
@@ -574,7 +580,19 @@ export function createBadge(input: {
 }
 
 export function deleteBadge(id: number) {
-  getDb().prepare("DELETE FROM badges WHERE id = ?").run(id);
+  const db = getDb();
+  db.transaction(() => {
+    db.prepare("DELETE FROM manual_badge_unlocks WHERE badge_id = ?").run(id);
+    db.prepare("DELETE FROM badges WHERE id = ?").run(id);
+  })();
+}
+
+export function grantBadgeManually(id: number) {
+  getDb().prepare("INSERT OR IGNORE INTO manual_badge_unlocks (badge_id) VALUES (?)").run(id);
+}
+
+export function revokeBadgeManually(id: number) {
+  getDb().prepare("DELETE FROM manual_badge_unlocks WHERE badge_id = ?").run(id);
 }
 
 export function addDailyEntry(taskTypeId: number, quantity = 1) {
@@ -908,13 +926,18 @@ function getStreak(today: string) {
     )
     .all() as { entryDate: string }[];
 
-  let expectedDate = today;
   let streak = 0;
+  let expectedDate = today;
 
-  for (const row of dates) {
+  for (let i = 0; i < dates.length; i++) {
+    const row = dates[i];
     if (row.entryDate === expectedDate) {
       streak += 1;
       expectedDate = addDays(expectedDate, -1);
+    } else if (i === 0 && row.entryDate === addDays(today, -1)) {
+      // Allow skipping 'today' if we are on the first record and it's yesterday
+      streak += 1;
+      expectedDate = addDays(row.entryDate, -1);
     } else if (row.entryDate < expectedDate) {
       break;
     }
@@ -950,27 +973,34 @@ function getBadges(streak: number) {
     .prepare("SELECT COUNT(*) as count FROM goal_bonuses")
     .get() as { count: number };
 
+  const manualUnlocks = db.prepare("SELECT badge_id FROM manual_badge_unlocks").all() as { badge_id: number }[];
+  const manualUnlockSet = new Set(manualUnlocks.map(r => r.badge_id));
+
   return badges.map((b) => {
-    let earned = false;
-    switch (b.condition_type) {
-      case "total_units":
-        earned = row.totalUnits >= b.condition_value;
-        break;
-      case "puzzle_units":
-        earned = row.puzzleUnits >= b.condition_value;
-        break;
-      case "bot_units":
-        earned = row.botUnits >= b.condition_value;
-        break;
-      case "streak":
-        earned = streak >= b.condition_value;
-        break;
-      case "weekly_goals":
-        earned = bonusRow.count >= b.condition_value;
-        break;
-      default:
-        earned = false;
-        break;
+    const manuallyEarned = manualUnlockSet.has(b.id);
+    let earned = manuallyEarned;
+
+    if (!earned) {
+      switch (b.condition_type) {
+        case "total_units":
+          earned = row.totalUnits >= b.condition_value;
+          break;
+        case "puzzle_units":
+          earned = row.puzzleUnits >= b.condition_value;
+          break;
+        case "bot_units":
+          earned = row.botUnits >= b.condition_value;
+          break;
+        case "streak":
+          earned = streak >= b.condition_value;
+          break;
+        case "weekly_goals":
+          earned = bonusRow.count >= b.condition_value;
+          break;
+        default:
+          earned = false;
+          break;
+      }
     }
 
     return {
@@ -981,7 +1011,8 @@ function getBadges(streak: number) {
       xp: b.xp,
       conditionType: b.condition_type,
       conditionValue: b.condition_value,
-      earned
+      earned,
+      manuallyEarned
     };
   }) satisfies Badge[];
 }

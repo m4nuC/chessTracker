@@ -22,6 +22,8 @@ import {
   setWeeklyGoalActive,
   createBadge,
   deleteBadge as deleteBadgeDb,
+  grantBadgeManually as grantBadgeManuallyDb,
+  revokeBadgeManually as revokeBadgeManuallyDb,
   updateReward as updateRewardDb,
   validateRewardClaim,
   type Role
@@ -308,6 +310,22 @@ export async function deleteBadge(formData: FormData) {
   await requireAdmin();
 
   deleteBadgeDb(getPositiveInteger(formData, "id"));
+
+  revalidatePath("/");
+}
+
+export async function grantBadge(formData: FormData) {
+  await requireAdmin();
+
+  grantBadgeManuallyDb(getPositiveInteger(formData, "id"));
+
+  revalidatePath("/");
+}
+
+export async function revokeBadge(formData: FormData) {
+  await requireAdmin();
+
+  revokeBadgeManuallyDb(getPositiveInteger(formData, "id"));
 
   revalidatePath("/");
 }
