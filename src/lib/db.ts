@@ -71,6 +71,12 @@ export type Badge = {
   conditionValue: number;
 };
 
+export type DailyStatus = {
+  date: string;
+  active: boolean;
+  isToday: boolean;
+};
+
 export type AppState = {
   today: string;
   currentWeekStart: string;
@@ -81,6 +87,7 @@ export type AppState = {
   level: number;
   nextLevelAt: number;
   streak: number;
+  recentActivity: DailyStatus[];
   todayTasks: TodayTask[];
   taskTypes: TaskType[];
   weeklyGoals: WeeklyGoal[];
@@ -1017,6 +1024,31 @@ function getBadges(streak: number) {
   }) satisfies Badge[];
 }
 
+function getRecentActivity(today: string, days = 14): DailyStatus[] {
+  const dates = getDb()
+    .prepare(
+      `SELECT entry_date as entryDate
+       FROM daily_entries
+       WHERE entry_date > date(?, '-' || ? || ' days')
+       GROUP BY entry_date
+       ORDER BY entry_date ASC`
+    )
+    .all(today, days) as { entryDate: string }[];
+  
+  const activeDates = new Set(dates.map(d => d.entryDate));
+  
+  const result: DailyStatus[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = addDays(today, -i);
+    result.push({
+      date: d,
+      active: activeDates.has(d),
+      isToday: i === 0
+    });
+  }
+  return result;
+}
+
 export function getAppState(): AppState {
   awardReachedWeeklyBonuses();
 
@@ -1040,6 +1072,7 @@ export function getAppState(): AppState {
     level,
     nextLevelAt: level * 100,
     streak,
+    recentActivity: getRecentActivity(today, 14),
     todayTasks: getTodayTasks(today),
     taskTypes: getTaskTypes(),
     weeklyGoals: getWeeklyGoals(currentWeekStart),

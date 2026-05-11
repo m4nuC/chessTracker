@@ -139,6 +139,29 @@ function StatCards({ state }: { state: AppState }) {
   );
 }
 
+function VisualStreak({ state }: { state: AppState }) {
+  return (
+    <section className="panel streak-panel">
+      <div className="streak-header">
+        <p className="eyebrow">Activité récente</p>
+        <span className="pill">Série en cours: {state.streak} jour{state.streak === 1 ? "" : "s"}</span>
+      </div>
+      <div className="streak-row">
+        {state.recentActivity.map((day) => (
+          <div 
+            key={day.date} 
+            className={`streak-day ${day.active ? 'active' : 'inactive'} ${day.isToday ? 'today' : ''}`} 
+            title={formatDate(day.date)}
+          >
+            <span className="streak-icon">{day.active ? '🔥' : '🌑'}</span>
+            <span className="streak-date">{new Date(day.date).getDate()}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function WeeklyGoals({ state }: { state: AppState }) {
   return (
     <section className="panel goals-panel">
@@ -373,13 +396,14 @@ function ChildDashboard({ state }: { state: AppState }) {
 
       <XpAdventure state={state} />
 
+      <VisualStreak state={state} />
+
       <section className="panel activity-panel">
         <div className="section-heading">
           <div>
             <p className="eyebrow">Aujourd&apos;hui</p>
             <h2>Qu'as-tu fait aujourd'hui?</h2>
           </div>
-          <span className="pill">Série: {state.streak} jour{state.streak === 1 ? "" : "s"}</span>
         </div>
 
         {state.todayTasks.length > 0 ? (
