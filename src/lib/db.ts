@@ -623,6 +623,27 @@ export function addDailyEntry(taskTypeId: number, quantity = 1) {
   })();
 }
 
+export function addDailyEntryForDate(taskTypeId: number, date: string, quantity = 1) {
+  const db = getDb();
+
+  db.transaction(() => {
+    const task = db
+      .prepare("SELECT id FROM task_types WHERE id = ?")
+      .get(taskTypeId);
+
+    if (!task) {
+      return;
+    }
+
+    db.prepare(
+      `INSERT INTO daily_entries (task_type_id, entry_date, quantity)
+       VALUES (?, ?, ?)`
+    ).run(taskTypeId, date, quantity);
+
+    awardReachedWeeklyBonuses(date);
+  })();
+}
+
 export function removeLastDailyEntry(taskTypeId: number) {
   const db = getDb();
 
@@ -739,16 +760,13 @@ function getBonusPoints() {
 }
 
 function getTotalPoints() {
-  const today = formatLocalDate();
-  const streak = getStreak(today);
-  const badges = getBadges(streak);
+  const badges = getBadges(getMaxStreak());
   const badgePoints = badges.filter(b => b.earned).reduce((sum, b) => sum + b.xp, 0);
   return getWorkPoints() + getBonusPoints() + badgePoints;
 }
 
-function awardReachedWeeklyBonuses() {
+function awardReachedWeeklyBonuses(forDate: string = formatLocalDate()) {
   const db = getDb();
-  const today = formatLocalDate();
   const goals = db
     .prepare(
       `SELECT
@@ -762,7 +780,7 @@ function awardReachedWeeklyBonuses() {
         AND gb.id IS NULL
         AND ? BETWEEN wg.week_start AND date(wg.week_start, '+6 days')`
     )
-    .all(today) as {
+    .all(forDate) as {
     id: number;
     taskTypeId: number;
     targetQuantity: number;
@@ -923,6 +941,33 @@ function getRewards(totalPoints: number): Reward[] {
   });
 }
 
+function getMaxStreak() {
+  const dates = getDb()
+    .prepare(
+      `SELECT entry_date as entryDate
+       FROM daily_entries
+       GROUP BY entry_date
+       ORDER BY entry_date ASC`
+    )
+    .all() as { entryDate: string }[];
+
+  let maxStreak = 0;
+  let currentRun = 0;
+  let prevDate: string | null = null;
+
+  for (const { entryDate } of dates) {
+    if (prevDate !== null && entryDate === addDays(prevDate, 1)) {
+      currentRun += 1;
+    } else {
+      currentRun = 1;
+    }
+    if (currentRun > maxStreak) maxStreak = currentRun;
+    prevDate = entryDate;
+  }
+
+  return maxStreak;
+}
+
 function getStreak(today: string) {
   const dates = getDb()
     .prepare(
@@ -953,7 +998,7 @@ function getStreak(today: string) {
   return streak;
 }
 
-function getBadges(streak: number) {
+function getBadges(maxStreak: number) {
   const db = getDb();
   const badges = db.prepare(`SELECT * FROM badges ORDER BY id ASC`).all() as {
     id: number;
@@ -999,7 +1044,7 @@ function getBadges(streak: number) {
           earned = row.botUnits >= b.condition_value;
           break;
         case "streak":
-          earned = streak >= b.condition_value;
+          earned = maxStreak >= b.condition_value;
           break;
         case "weekly_goals":
           earned = bonusRow.count >= b.condition_value;
@@ -1057,7 +1102,7 @@ export function getAppState(): AppState {
   const workPoints = getWorkPoints();
   const bonusPoints = getBonusPoints();
   const streak = getStreak(today);
-  const badges = getBadges(streak);
+  const badges = getBadges(getMaxStreak());
   const badgePoints = badges.filter(b => b.earned).reduce((sum, b) => sum + b.xp, 0);
   const totalPoints = workPoints + bonusPoints + badgePoints;
   const level = Math.floor(totalPoints / 100) + 1;

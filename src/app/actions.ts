@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import {
   activateReward as activateRewardDb,
   addDailyEntry,
+  addDailyEntryForDate,
   createReward,
   createSession,
   createTaskType,
@@ -272,6 +273,22 @@ export async function recordWork(formData: FormData) {
   await requireChild();
 
   addDailyEntry(getPositiveInteger(formData, "taskTypeId"));
+
+  revalidatePath("/");
+}
+
+export async function recordWorkForDate(formData: FormData) {
+  await requireAdmin();
+
+  const taskTypeId = getPositiveInteger(formData, "taskTypeId");
+  const quantity = getPositiveInteger(formData, "quantity");
+  const date = getString(formData, "date");
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return;
+  }
+
+  addDailyEntryForDate(taskTypeId, date, quantity);
 
   revalidatePath("/");
 }

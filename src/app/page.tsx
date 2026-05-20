@@ -9,6 +9,7 @@ import {
   logout,
   markRewardClaimed,
   recordWork,
+  recordWorkForDate,
   resetDatabase,
   toggleTaskType,
   toggleWeeklyGoal,
@@ -476,6 +477,7 @@ function AdminDashboard({
   resetNotice: ResetNotice;
 }) {
   const activeTaskTypes = state.taskTypes.filter((task) => task.active);
+  const defaultRetroDate = state.recentActivity.at(-2)?.date ?? state.today;
 
   return (
     <main className="app-shell">
@@ -562,6 +564,49 @@ function AdminDashboard({
               </li>
             ))}
           </ul>
+        </div>
+
+        <div className="panel form-stack">
+          <p className="eyebrow">Saisie rétroactive</p>
+          <h2>Ajouter une activité passée</h2>
+          <p>
+            Pour rattraper un jour oublié. La quantité s&apos;ajoute au total
+            de la date choisie et déclenche les bonus de la semaine concernée.
+          </p>
+          <form action={recordWorkForDate} className="form-stack">
+            <label>
+              Activité
+              <select name="taskTypeId" required disabled={state.taskTypes.length === 0}>
+                {state.taskTypes.map((task) => (
+                  <option key={task.id} value={task.id}>
+                    {task.icon} {task.name}
+                    {task.active ? "" : " (en pause)"}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Date
+              <input
+                name="date"
+                type="date"
+                max={state.today}
+                defaultValue={defaultRetroDate}
+                required
+              />
+            </label>
+            <label>
+              Quantité
+              <input min="1" name="quantity" type="number" defaultValue="1" required />
+            </label>
+            <button
+              className="primary-button"
+              disabled={state.taskTypes.length === 0}
+              type="submit"
+            >
+              Ajouter l&apos;activité
+            </button>
+          </form>
         </div>
 
         <div className="panel form-stack">
