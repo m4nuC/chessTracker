@@ -1069,26 +1069,31 @@ function getBadges(maxStreak: number) {
   }) satisfies Badge[];
 }
 
-function getRecentActivity(today: string, days = 14): DailyStatus[] {
+function getRecentActivity(today: string, minDays = 14): DailyStatus[] {
   const dates = getDb()
     .prepare(
       `SELECT entry_date as entryDate
        FROM daily_entries
-       WHERE entry_date > date(?, '-' || ? || ' days')
        GROUP BY entry_date
        ORDER BY entry_date ASC`
     )
-    .all(today, days) as { entryDate: string }[];
-  
+    .all() as { entryDate: string }[];
+
   const activeDates = new Set(dates.map(d => d.entryDate));
-  
+
+  // Span every day from the first recorded entry (or `minDays` ago, whichever
+  // is earlier) through today, so the streak strip can be scrolled across the
+  // whole history.
+  const earliestByMin = addDays(today, -(minDays - 1));
+  const firstEntry = dates.length > 0 ? dates[0].entryDate : earliestByMin;
+  const start = firstEntry < earliestByMin ? firstEntry : earliestByMin;
+
   const result: DailyStatus[] = [];
-  for (let i = days - 1; i >= 0; i--) {
-    const d = addDays(today, -i);
+  for (let d = start; d <= today; d = addDays(d, 1)) {
     result.push({
       date: d,
       active: activeDates.has(d),
-      isToday: i === 0
+      isToday: d === today
     });
   }
   return result;

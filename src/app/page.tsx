@@ -26,6 +26,7 @@ import { XpCarousel } from "@/components/XpCarousel";
 import { BadgeUnlockPopup } from "@/components/BadgeUnlockPopup";
 import { RewardUnlockPopup } from "@/components/RewardUnlockPopup";
 import { RewardsModal } from "@/components/RewardsModal";
+import { StreakScroller } from "@/components/StreakScroller";
 import { TaskCompleteButton } from "@/components/TaskCompleteButton";
 
 export const dynamic = "force-dynamic";
@@ -147,18 +148,18 @@ function VisualStreak({ state }: { state: AppState }) {
         <p className="eyebrow">Activité récente</p>
         <span className="pill">Série en cours: {state.streak} jour{state.streak === 1 ? "" : "s"}</span>
       </div>
-      <div className="streak-row">
+      <StreakScroller>
         {state.recentActivity.map((day) => (
-          <div 
-            key={day.date} 
-            className={`streak-day ${day.active ? 'active' : 'inactive'} ${day.isToday ? 'today' : ''}`} 
+          <div
+            key={day.date}
+            className={`streak-day ${day.active ? 'active' : 'inactive'} ${day.isToday ? 'today' : ''}`}
             title={formatDate(day.date)}
           >
             <span className="streak-icon">{day.active ? '🔥' : '🌑'}</span>
             <span className="streak-date">{new Date(day.date).getDate()}</span>
           </div>
         ))}
-      </div>
+      </StreakScroller>
     </section>
   );
 }
@@ -349,6 +350,10 @@ function XpAdventure({ state, previewAll = false }: { state: AppState; previewAl
 
 function ChildDashboard({ state }: { state: AppState }) {
   const availableRewards = state.rewards.filter((r) => r.timesAvailable > 0);
+  const totalAvailableCount = availableRewards.reduce(
+    (sum, r) => sum + r.timesAvailable,
+    0
+  );
 
   return (
     <main className="app-shell">
@@ -362,20 +367,31 @@ function ChildDashboard({ state }: { state: AppState }) {
           <h1>Bonjour Abi.</h1>
         </div>
         <div className="topbar-actions">
-          <RewardsModal count={availableRewards.length}>
+          <RewardsModal count={totalAvailableCount}>
             {availableRewards.length > 0 ? (
               <div className="task-grid">
                 {availableRewards.map((reward) => (
                   <article className="task-card" key={reward.id}>
                     <div className="task-card-header">
                       <span className="task-icon">{reward.icon}</span>
+                      {reward.timesAvailable > 1 ? (
+                        <span className="reward-count-badge">
+                          ×{reward.timesAvailable}
+                        </span>
+                      ) : null}
                     </div>
                     <h3>{reward.name}</h3>
                     <p>{reward.description}</p>
+                    {reward.timesAvailable > 1 ? (
+                      <p className="reward-available-note">
+                        Tu en as débloqué {reward.timesAvailable} ! Active-les une
+                        par une.
+                      </p>
+                    ) : null}
                     <form action={activateReward}>
                       <input name="id" type="hidden" value={reward.id} />
                       <button className="primary-button" type="submit">
-                        Activer
+                        {reward.timesAvailable > 1 ? "Activer (1)" : "Activer"}
                       </button>
                     </form>
                   </article>

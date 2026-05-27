@@ -500,6 +500,24 @@ p {
   justify-content: space-between;
 }
 
+.reward-count-badge {
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  align-self: flex-start;
+  flex-shrink: 0;
+}
+
+.reward-available-note {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
 .task-card.compact {
   gap: 1.5rem;
   display: flex;
